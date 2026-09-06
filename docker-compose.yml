@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: taskmanager_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-taskmanager}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-taskmanager123}
+      POSTGRES_DB: ${DB_NAME:-taskmanager_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-taskmanager}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taskmanager_network
+
+  # FastAPI Application
+  api:
+    build: .
+    container_name: taskmanager_api
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-taskmanager}:${DB_PASSWORD:-taskmanager123}@db:5432/${DB_NAME:-taskmanager_db}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: ${DEBUG:-True}
+      SECRET_KEY: ${SECRET_KEY:-your-super-secret-key-change-in-production}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - taskmanager_network
+
+volumes:
+  postgres_data:
+
+networks:
+  taskmanager_network:
+    driver: bridge
