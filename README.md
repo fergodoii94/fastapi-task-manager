@@ -2,339 +2,122 @@
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green.svg)](https://fastapi.tiangolo.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791.svg)](https://www.postgresql.org/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Security](https://img.shields.io/badge/Security-JWT-blue.svg)](https://jwt.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CI/CD](https://github.com/fergodoii94/fastapi-task-manager/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/fergodoii94/fastapi-task-manager/actions)
 
-Professional-grade **REST API** for task management built with **FastAPI**, **PostgreSQL**, and **SQLAlchemy**. 
-Demonstrates production-ready patterns including authentication-ready architecture, comprehensive testing, Docker containerization, and CI/CD automation.
+Professional-grade REST API for task management built with FastAPI. This version includes JWT authentication, protected endpoints, structured logging, health checks, and clean request validation patterns for a more interview-ready project.
 
----
+## What this project demonstrates
 
-## 🎯 Quick Start
+- FastAPI application structure
+- JWT authentication with bearer tokens
+- Protected routes using dependency injection
+- Global HTTP and server error handling
+- Health check endpoint for operational readiness
+- In-memory task management suitable for demos and learning
 
-### Prerequisites
-- Python 3.11+
-- PostgreSQL 13+
-- Docker & Docker Compose (optional)
-- Git
+## Architecture
 
-### Local Setup (Development)
+```text
+main.py                entry point and app wiring
+src/
+  auth.py              JWT creation, validation and auth dependency
+  config.py            environment/settings configuration
+  __init__.py          package marker
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/fergodoii94/fastapi-task-manager.git
-   cd fastapi-task-manager
-   ```
+## Quick start
 
-2. **Create virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements-dev.txt
-   ```
-
-4. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your database credentials
-   ```
-
-5. **Run application**
-   ```bash
-   uvicorn src.main:app --reload
-   ```
-
-   API available at: `http://localhost:8000`
-   Docs available at: `http://localhost:8000/docs`
-
-### Docker Setup (Recommended)
+### 1. Create a virtual environment
 
 ```bash
-# Build and start services
-docker-compose up --build
-
-# Run migrations (if needed)
-docker-compose exec api alembic upgrade head
-
-# Access the API
-# API: http://localhost:8000
-# Docs: http://localhost:8000/docs
+python -m venv .venv
+source .venv/bin/activate
 ```
 
----
+### 2. Install dependencies
 
-## 📚 API Documentation
-
-### Base URL
-```
-http://localhost:8000/api/v1
+```bash
+pip install -r requirements.txt
 ```
 
-### Endpoints Overview
+### 3. Configure environment (optional)
+
+```bash
+cp .env.example .env
+```
+
+### 4. Run the API
+
+```bash
+uvicorn main:app --reload
+```
+
+## Authentication flow
+
+### Login
+
+```bash
+curl -X POST "http://localhost:8000/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+```
+
+Response:
+
+```json
+{
+  "access_token": "<jwt-token>",
+  "token_type": "bearer"
+}
+```
+
+### Protected route example
+
+```bash
+curl -X GET "http://localhost:8000/tasks" \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+## Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/tasks` | Create a new task |
-| `GET` | `/tasks` | List all tasks (paginated) |
-| `GET` | `/tasks/{id}` | Get task details |
-| `PUT` | `/tasks/{id}` | Update a task |
-| `DELETE` | `/tasks/{id}` | Delete a task |
+| GET | `/` | API welcome message |
+| GET | `/health` | Liveness/health check |
+| POST | `/login` | Create a JWT token |
+| GET | `/me` | Return current authenticated user |
+| GET | `/tasks` | List all tasks |
+| POST | `/tasks` | Create a task |
+| GET | `/tasks/{task_id}` | Get task by id |
+| PUT | `/tasks/{task_id}` | Update a task |
+| DELETE | `/tasks/{task_id}` | Delete a task |
 
-### Create Task
-```http
-POST /api/v1/tasks
-Content-Type: application/json
+## Example task payload
 
-{
-  "title": "Complete project documentation",
-  "description": "Write comprehensive docs for the API",
-  "priority": 3,
-  "status": "pending"
-}
-```
-
-**Response (201 Created):**
 ```json
 {
-  "id": 1,
-  "title": "Complete project documentation",
-  "description": "Write comprehensive docs for the API",
+  "title": "Ship the first version",
+  "description": "Deliver the MVP and validate the flow",
   "priority": 3,
-  "status": "pending",
-  "created_at": "2024-01-15T10:30:00+00:00",
-  "updated_at": "2024-01-15T10:30:00+00:00"
+  "completed": false
 }
 ```
 
-### List Tasks
-```http
-GET /api/v1/tasks?skip=0&limit=10&status=pending
-```
+## Security notes
 
-**Query Parameters:**
-- `skip` (int, default: 0) - Number of records to skip
-- `limit` (int, default: 10, max: 100) - Records per page
-- `status` (string, optional) - Filter by status: `pending`, `in_progress`, `completed`, `archived`
+- JWT is used for route protection
+- Token validation checks signature and expiration
+- Credentials are environment-based and should be changed in production
+- Replace the default secret key before deploying beyond local development
 
-**Response (200 OK):**
-```json
-{
-  "total": 15,
-  "items": [
-    {
-      "id": 1,
-      "title": "Task 1",
-      "description": "Description",
-      "priority": 1,
-      "status": "pending",
-      "created_at": "2024-01-15T10:30:00+00:00",
-      "updated_at": "2024-01-15T10:30:00+00:00"
-    }
-  ],
-  "page": 1,
-  "page_size": 10
-}
-```
+## Future improvements
 
-### Get Task by ID
-```http
-GET /api/v1/tasks/1
-```
+- replace in-memory storage with PostgreSQL + SQLAlchemy
+- add user registration and hashed password storage
+- add refresh tokens and role-based access control
+- add structured observability and Prometheus metrics
 
-### Update Task
-```http
-PUT /api/v1/tasks/1
-Content-Type: application/json
+## License
 
-{
-  "status": "completed",
-  "priority": 5
-}
-```
-
-### Delete Task
-```http
-DELETE /api/v1/tasks/1
-```
-
----
-
-## 🏗️ Project Architecture
-
-### Directory Structure
-```
-fastapi-task-manager/
-├── src/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI app factory
-│   ├── config.py            # Environment configuration
-│   ├── database.py          # SQLAlchemy setup
-│   ├── models.py            # ORM models
-│   ├── schemas.py           # Pydantic validators
-│   ├── services.py          # Business logic layer
-│   └── routes/
-│       ├── __init__.py
-│       └── tasks.py         # Task endpoints
-├── tests/
-│   ├── __init__.py
-│   └── test_tasks.py        # Comprehensive tests (35+ cases)
-├── .github/
-│   └── workflows/
-│       └── ci-cd.yml        # GitHub Actions CI/CD
-├── Dockerfile               # Production container
-├── docker-compose.yml       # Local dev environment
-├── pyproject.toml           # Project metadata & tools config
-├── requirements.txt         # Production dependencies
-├── requirements-dev.txt     # Development dependencies
-├── .env.example            # Environment template
-├── .gitignore              # Git ignore rules
-├── LICENSE                 # MIT License
-└── README.md               # This file
-```
-
-### Layered Architecture
-```
-HTTP Request
-    ↓
-Routes (Validation)
-    ↓
-Services (Business Logic)
-    ↓
-Models (Database)
-    ↓
-PostgreSQL Database
-```
-
----
-
-## 🧪 Testing
-
-### Run All Tests
-```bash
-pytest tests/ -v
-```
-
-### Run Tests with Coverage
-```bash
-pytest tests/ --cov=src --cov-report=html --cov-report=term-missing
-```
-
-**Coverage:** 98%+ (35+ test cases covering CRUD, validation, pagination, filtering, error handling)
-
----
-
-## 🚀 Deployment
-
-### Docker Compose
-```bash
-docker-compose up --build
-```
-
-### Environment Variables
-```bash
-DATABASE_URL=postgresql://user:password@host:5432/taskmanager
-SECRET_KEY=your-secret-key-here
-ENVIRONMENT=production
-DEBUG=False
-```
-
----
-
-## 🔧 Development
-
-### Code Quality
-```bash
-# Format code
-black src tests
-
-# Lint
-flake8 src tests --max-line-length=100
-
-# Type checking
-mypy src --ignore-missing-imports
-```
-
-### CI/CD Pipeline
-Automated testing, linting, and Docker builds on every push via GitHub Actions.
-
----
-
-## 📈 Features
-
-✅ **Production-Ready Architecture**
-- Layered architecture (routes → services → models)
-- Type hints throughout codebase
-- Comprehensive error handling
-
-✅ **Database**
-- PostgreSQL with connection pooling
-- SQLAlchemy ORM with proper relationships
-- Indexed fields for performance
-
-✅ **Testing**
-- 35+ test cases with 98%+ coverage
-- CRUD operations, validation, pagination
-- Error scenarios and edge cases
-
-✅ **Containerization**
-- Production Dockerfile with health checks
-- Docker Compose for local development
-- Multi-stage builds for optimization
-
-✅ **CI/CD**
-- GitHub Actions workflow
-- Automated testing and code quality checks
-- Docker image building and caching
-
-✅ **Documentation**
-- Interactive API docs (Swagger/OpenAPI)
-- Comprehensive README with examples
-- Well-documented code with docstrings
-
----
-
-## 🔐 Security
-
-- Environment variable management
-- Input validation with Pydantic
-- SQL injection prevention (SQLAlchemy ORM)
-- CORS configuration
-- Type hints for runtime safety
-- Request/response validation
-
-**Authentication Ready:** Structure prepared for JWT implementation
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Run tests and quality checks
-4. Commit changes (`git commit -m 'feat: add amazing feature'`)
-5. Push to branch and open Pull Request
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file
-
----
-
-## 👨‍💻 Author
-
-**Fernando Godoi**
-- GitHub: [@fergodoii94](https://github.com/fergodoii94)
-- Email: fergodoi94@gmail.com
-- Python Backend Developer | FastAPI | REST APIs | Async Programming
-
----
-
-**Status:** ✅ Production Ready | **Test Coverage:** 98%+ | **Latest Update:** January 2024
+MIT
