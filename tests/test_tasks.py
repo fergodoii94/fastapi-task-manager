@@ -3,13 +3,26 @@ def test_health_check(client):
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
+
 def test_create_and_get_task(client):
     response = client.post("/api/v1/tasks", json={"title": "Ship API", "priority": 4})
     assert response.status_code == 201
     task = response.json()
     assert task["title"] == "Ship API"
     assert task["priority"] == 4
-    assert client.get("/api/v1/tasks/" + str(task["id"])).json()["id"] == task["id"]
+    assert client.get(f"/api/v1/tasks/{task['id']}").json()["id"] == task["id"]
+
+
+def test_create_task_trims_title(client):
+    response = client.post("/api/v1/tasks", json={"title": "  Ship API  "})
+    assert response.status_code == 201
+    assert response.json()["title"] == "Ship API"
+
+
+def test_create_task_rejects_whitespace_title(client):
+    response = client.post("/api/v1/tasks", json={"title": "   "})
+    assert response.status_code == 422
+
 
 def test_list_tasks_filters_status(client):
     client.post("/api/v1/tasks", json={"title": "Pending"})
@@ -18,19 +31,47 @@ def test_list_tasks_filters_status(client):
     assert body["total"] == 1
     assert body["items"][0]["status"] == "completed"
 
+
 def test_update_task(client):
     task = client.post("/api/v1/tasks", json={"title": "Initial"}).json()
-    response = client.patch("/api/v1/tasks/" + str(task["id"]), json={"title": "Updated", "status": "in_progress"})
+    response = client.patch(
+        f"/api/v1/tasks/{task['id']}",
+        json={"title": "Updated", "status": "in_progress"},
+    )
     assert response.status_code == 200
     assert response.json()["title"] == "Updated"
 
+
+def test_update_task_rejects_empty_patch(client):
+    task = client.post("/api/v1/tasks", json={"title": "Initial"}).json()
+    response = client.patch(f"/api/v1/tasks/{task['id']}", json={})
+    assert response.status_code == 422
+
+
+def test_update_task_rejects_null_required_fields(client):
+    task = client.post("/api/v1/tasks", json={"title": "Initial"}).json()
+    for field in ("title", "status", "priority"):
+        response = client.patch(f"/api/v1/tasks/{task['id']}", json={field: None})
+        assert response.status_code == 422
+
+
+def test_update_task_rejects_whitespace_title(client):
+    task = client.post("/api/v1/tasks", json={"title": "Initial"}).json()
+    response = client.patch(f"/api/v1/tasks/{task['id']}", json={"title": "   "})
+    assert response.status_code == 422
+
+
 def test_delete_task(client):
     task = client.post("/api/v1/tasks", json={"title": "Delete me"}).json()
-    assert client.delete("/api/v1/tasks/" + str(task["id"])).status_code == 204
-    assert client.get("/api/v1/tasks/" + str(task["id"])).status_code == 404
+    assert client.delete(f"/api/v1/tasks/{task['id']}").status_code == 204
+    assert client.get(f"/api/v1/tasks/{task['id']}").status_code == 404
+
 
 def test_invalid_priority_is_rejected(client):
-    assert client.post("/api/v1/tasks", json={"title": "Bad", "priority": 9}).status_code == 422
+    assert client.post(
+        "/api/v1/tasks", json={"title": "Bad", "priority": 9}
+    ).status_code == 422
+
 
 def test_missing_task_returns_404(client):
     assert client.get("/api/v1/tasks/999").status_code == 404
