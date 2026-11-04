@@ -1,0 +1,15 @@
+# Keep local state and credentials out of the Docker build context.
+.git
+.github
+.venv
+venv
+__pycache__
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+.env
+*.db
+*.sqlite
+*.sqlite3
+tests

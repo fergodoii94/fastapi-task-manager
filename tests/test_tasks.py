@@ -32,6 +32,24 @@ def test_list_tasks_filters_status(client):
     assert body["items"][0]["status"] == "completed"
 
 
+def test_list_tasks_paginates_with_stable_order(client):
+    for title in ("First", "Second", "Third"):
+        response = client.post("/api/v1/tasks", json={"title": title})
+        assert response.status_code == 201
+
+    first_page = client.get("/api/v1/tasks?page=1&page_size=2").json()
+    second_page = client.get("/api/v1/tasks?page=2&page_size=2").json()
+
+    assert first_page["total"] == 3
+    assert [item["title"] for item in first_page["items"]] == ["Third", "Second"]
+    assert [item["title"] for item in second_page["items"]] == ["First"]
+
+
+def test_list_tasks_rejects_invalid_pagination(client):
+    assert client.get("/api/v1/tasks?page=0").status_code == 422
+    assert client.get("/api/v1/tasks?page_size=101").status_code == 422
+
+
 def test_update_task(client):
     task = client.post("/api/v1/tasks", json={"title": "Initial"}).json()
     response = client.patch(
@@ -40,6 +58,21 @@ def test_update_task(client):
     )
     assert response.status_code == 200
     assert response.json()["title"] == "Updated"
+
+
+def test_update_task_can_clear_description(client):
+    task = client.post(
+        "/api/v1/tasks",
+        json={"title": "Initial", "description": "Details"},
+    ).json()
+
+    response = client.patch(
+        f"/api/v1/tasks/{task['id']}",
+        json={"description": None},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["description"] is None
 
 
 def test_update_task_rejects_empty_patch(client):

@@ -19,8 +19,16 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
-        run: pip install -r requirements-dev.txt
+        run: python -m pip install -r requirements-dev.txt
       - name: Lint
         run: ruff check src tests alembic
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: sqlite:///./task_manager.db
+        run: alembic upgrade head
+      - name: Check ORM and migration parity
+        env:
+          DATABASE_URL: sqlite:///./task_manager.db
+        run: alembic check
       - name: Test
         run: pytest
