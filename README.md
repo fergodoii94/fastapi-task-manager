@@ -1,6 +1,6 @@
 # Task Manager API
 
-A portfolio backend project built with Python 3.12, FastAPI, SQLAlchemy 2.0, PostgreSQL and Alembic. It demonstrates REST API design, persistence, validation, pagination, dependency injection, database migrations, automated tests and containerization.
+A portfolio backend project built with Python 3.12, FastAPI, SQLAlchemy 2.0, PostgreSQL and Alembic. It demonstrates REST API design, persistence, strict request validation, pagination, dependency injection, database migrations, automated tests and containerization.
 
 [![CI](https://github.com/fergodoii94/fastapi-task-manager/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/fergodoii94/fastapi-task-manager/actions/workflows/ci-cd.yml)
 
@@ -9,7 +9,8 @@ A portfolio backend project built with Python 3.12, FastAPI, SQLAlchemy 2.0, Pos
 - CRUD endpoints for tasks with typed request and response schemas.
 - SQLAlchemy 2.0 persistence; PostgreSQL with Docker Compose and SQLite by default for local development/tests.
 - Pagination and filtering by task status.
-- Input validation for titles, status, priority and partial updates.
+- Input validation for titles, status, priority, partial updates and unknown request fields.
+- Environment configuration validated with Pydantic Settings.
 - Alembic migration history, including a migration that removes a redundant primary-key index.
 - Integration tests using isolated in-memory SQLite.
 - Docker image runs as a non-root user.
@@ -19,9 +20,10 @@ A portfolio backend project built with Python 3.12, FastAPI, SQLAlchemy 2.0, Pos
 ## Architecture
 
 - `src/routes/`: HTTP endpoints and dependency injection.
-- `src/services.py`: persistence operations.
+- `src/services.py`: typed persistence operations.
 - `src/models.py`: SQLAlchemy ORM models.
 - `src/schemas.py`: Pydantic request/response contracts.
+- `src/config.py`: validated environment settings.
 - `src/database.py`: engine, session factory and declarative base.
 - `alembic/`: versioned database migrations.
 
@@ -66,7 +68,7 @@ Base path: `/api/v1`
 | PATCH | `/tasks/{id}` | Partial update |
 | DELETE | `/tasks/{id}` | Delete task (204) |
 
-Statuses: `pending`, `in_progress`, `completed`, `archived`. Priority ranges from 1 to 5. Titles are trimmed, required and limited to 160 characters.
+Statuses: `pending`, `in_progress`, `completed`, `archived`. Priority ranges from 1 to 5. Titles are trimmed, required and limited to 160 characters. Unknown request fields are rejected instead of silently ignored.
 
 ## Database migrations
 
@@ -101,10 +103,16 @@ This is a learning/portfolio API, not a production-ready multi-user service. Do 
 
 - `DATABASE_URL`: defaults to `sqlite:///./task_manager.db`.
 - `APP_NAME`: defaults to `Task Manager API`.
-- `API_V1_PREFIX`: defaults to `/api/v1`.
+- `API_V1_PREFIX`: defaults to `/api/v1` and must start with `/`.
 
 Never commit production credentials.
 
 ## License
 
 MIT.
+
+## Related portfolio projects
+
+- [JWT token validation example](https://github.com/fergodoii94/jwt-auth-system)
+- [E-commerce API prototype](https://github.com/fergodoii94/ecommerce-backend-api)
+- [WebSocket echo server](https://github.com/fergodoii94/websocket-chat-app)

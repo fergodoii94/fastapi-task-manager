@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
 
@@ -12,6 +14,8 @@ class TaskStatus(str, Enum):
 
 
 class TaskCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     title: str = Field(min_length=1, max_length=160)
     description: str | None = Field(default=None, max_length=5000)
     status: TaskStatus = TaskStatus.pending
@@ -27,6 +31,8 @@ class TaskCreate(BaseModel):
 
 
 class TaskUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     title: str | None = Field(default=None, min_length=1, max_length=160)
     description: str | None = Field(default=None, max_length=5000)
     status: TaskStatus | None = None
@@ -43,7 +49,7 @@ class TaskUpdate(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def validate_patch(self):
+    def validate_patch(self) -> TaskUpdate:
         if not self.model_fields_set:
             raise ValueError("At least one field must be provided")
         for field in ("title", "status", "priority"):
@@ -53,7 +59,8 @@ class TaskUpdate(BaseModel):
 
 
 class TaskRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
+
     id: int
     title: str
     description: str | None
@@ -64,7 +71,7 @@ class TaskRead(BaseModel):
 
 
 class TaskPage(BaseModel):
-    total: int
+    total: int = Field(ge=0)
     items: list[TaskRead]
-    page: int
-    page_size: int
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1, le=100)

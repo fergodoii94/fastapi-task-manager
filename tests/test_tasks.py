@@ -1,3 +1,22 @@
+def test_create_task_rejects_unknown_fields(client):
+    response = client.post(
+        "/api/v1/tasks",
+        json={"title": "Ship API", "unexpected": "silently ignored before"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_task_rejects_unknown_fields(client):
+    task = client.post("/api/v1/tasks", json={"title": "Initial"}).json()
+    response = client.patch(
+        f"/api/v1/tasks/{task['id']}",
+        json={"unexpected": "typo"},
+    )
+
+    assert response.status_code == 422
+
+
 def test_health_check(client):
     response = client.get("/health")
     assert response.status_code == 200
