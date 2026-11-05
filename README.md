@@ -1,13 +1,27 @@
+<div align="center">
+
 # Task Manager API
 
-A portfolio backend project built with Python 3.12, FastAPI, SQLAlchemy 2.0, PostgreSQL and Alembic. It demonstrates REST API design, persistence, strict request validation, pagination, dependency injection, database migrations, automated tests and containerization.
+**A typed REST API built with FastAPI, SQLAlchemy 2.0 and PostgreSQL.**
 
 [![CI](https://github.com/fergodoii94/fastapi-task-manager/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/fergodoii94/fastapi-task-manager/actions/workflows/ci-cd.yml)
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
-## Implemented features
+</div>
+
+A portfolio backend project demonstrating REST API design, persistence, strict request validation, pagination, dependency injection, database migrations, automated tests and containerization.
+
+## Overview
+
+The API provides task CRUD operations with typed request/response contracts and a migration-managed database schema. SQLite is used by default for local development and tests; PostgreSQL is supported through configuration and Docker Compose.
+
+## Features
 
 - CRUD endpoints for tasks with typed request and response schemas.
-- SQLAlchemy 2.0 persistence; PostgreSQL with Docker Compose and SQLite by default for local development/tests.
+- SQLAlchemy 2.0 persistence.
+- PostgreSQL with Docker Compose; SQLite by default for local development/tests.
 - Pagination and filtering by task status.
 - Input validation for titles, status, priority, partial updates and unknown request fields.
 - Environment configuration validated with Pydantic Settings.
@@ -16,6 +30,17 @@ A portfolio backend project built with Python 3.12, FastAPI, SQLAlchemy 2.0, Pos
 - Docker image runs as a non-root user.
 - GitHub Actions checks Ruff, applies migrations, checks ORM/migration parity and runs Pytest.
 - Interactive OpenAPI documentation at `/docs`.
+
+## Tech stack
+
+| Area | Tools |
+|---|---|
+| Language & API | Python, FastAPI, Pydantic |
+| Data layer | SQLAlchemy 2.0, PostgreSQL, SQLite |
+| Migrations | Alembic |
+| Quality | Pytest, Ruff |
+| Runtime | Docker, Docker Compose |
+| Automation | GitHub Actions |
 
 ## Architecture
 
@@ -50,9 +75,11 @@ docker compose up --build
 
 The API container applies migrations before starting Uvicorn.
 
-- API: http://localhost:8000
-- OpenAPI: http://localhost:8000/docs
-- Health: http://localhost:8000/health
+| Service | Address |
+|---|---|
+| API | http://localhost:8000 |
+| OpenAPI docs | http://localhost:8000/docs |
+| Health check | http://localhost:8000/health |
 
 The credentials in `docker-compose.yml` are for local development only. Replace them and use a secret manager/environment-specific configuration before any deployment.
 
@@ -93,11 +120,13 @@ pytest
 
 Tests use isolated SQLite and do not require PostgreSQL. The migration smoke check uses the configured `DATABASE_URL`; see the Actions tab for the actual result of each run.
 
-## Authentication and production scope
+## Security scope
 
-This project intentionally remains a single-tenant task API. Authentication was not added because there is no user model or task-ownership boundary yet; adding token validation without per-user data isolation would create a misleading security claim. The separate JWT example demonstrates token handling only. Before exposing this API to multiple users, add persisted users, password hashing, JWT verification as a FastAPI dependency, ownership filtering on every task query, rate limiting and deployment secret management.
+This project intentionally remains a single-tenant task API. Authentication was not added because there is no user model or task-ownership boundary yet; adding token validation without per-user data isolation would create a misleading security claim. The separate JWT example demonstrates token handling only.
 
-This is a learning/portfolio API, not a production-ready multi-user service. Do not expose it publicly with real user data until those controls are implemented and reviewed.
+Before exposing this API to multiple users, add persisted users, password hashing, JWT verification as a FastAPI dependency, ownership filtering on every task query, rate limiting and deployment secret management.
+
+> **Portfolio scope:** This is a learning/portfolio API, not a production-ready multi-user service. Do not expose it publicly with real user data until those controls are implemented and reviewed.
 
 ## Configuration
 
@@ -107,12 +136,18 @@ This is a learning/portfolio API, not a production-ready multi-user service. Do 
 
 Never commit production credentials.
 
-## License
-
-MIT.
-
-## Related portfolio projects
+## Related projects
 
 - [JWT token validation example](https://github.com/fergodoii94/jwt-auth-system)
 - [E-commerce API prototype](https://github.com/fergodoii94/ecommerce-backend-api)
 - [WebSocket echo server](https://github.com/fergodoii94/websocket-chat-app)
+
+---
+
+<div align="center">
+  <sub>Built as part of my Python backend engineering portfolio.</sub>
+</div>
+
+## License
+
+MIT.
