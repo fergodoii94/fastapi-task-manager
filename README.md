@@ -2,33 +2,36 @@
 
 # Task Manager API
 
-**A typed REST API built with FastAPI, SQLAlchemy 2.0 and PostgreSQL.**
+**A multi-user REST API built with FastAPI, SQLAlchemy 2.0 and PostgreSQL.**
 
 [![CI](https://github.com/fergodoii94/fastapi-task-manager/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/fergodoii94/fastapi-task-manager/actions/workflows/ci-cd.yml)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white)
+![Auth](https://img.shields.io/badge/Auth-JWT-6B5CE7)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
 </div>
 
-A portfolio backend project demonstrating REST API design, persistence, strict request validation, pagination, dependency injection, database migrations, automated tests and containerization.
+A portfolio backend project demonstrating authenticated REST API design, per-user data isolation, password hashing, typed validation, database migrations, automated tests and containerization.
 
 ## Overview
 
-The API provides task CRUD operations with typed request/response contracts and a migration-managed database schema. SQLite is used by default for local development and tests; PostgreSQL is supported through configuration and Docker Compose.
+Users can register, log in and manage their own tasks. The API uses signed JWT bearer tokens for authentication and scopes every task read/write operation to the authenticated user. SQLite is the default for local development and tests; PostgreSQL is supported through configuration and Docker Compose.
 
 ## Features
 
-- CRUD endpoints for tasks with typed request and response schemas.
-- SQLAlchemy 2.0 persistence.
+- User registration and login with email/password.
+- Password hashing with Argon2 via `pwdlib`; plaintext passwords are never stored.
+- JWT access tokens signed with HS256 and configurable expiration.
+- Authenticated `/me` endpoint.
+- Task CRUD with strict Pydantic request/response contracts.
+- Per-user task ownership enforced in database queries; cross-user task access returns 404.
+- SQLAlchemy 2.0 persistence and Alembic migrations.
 - PostgreSQL with Docker Compose; SQLite by default for local development/tests.
 - Pagination and filtering by task status.
 - Input validation for titles, status, priority, partial updates and unknown request fields.
-- Environment configuration validated with Pydantic Settings.
-- Alembic migration history, including a migration that removes a redundant primary-key index.
-- Integration tests using isolated in-memory SQLite.
-- Docker image runs as a non-root user.
 - GitHub Actions checks Ruff, applies migrations, checks ORM/migration parity and runs Pytest.
+- Docker image runs as a non-root user.
 - Interactive OpenAPI documentation at `/docs`.
 
 ## Tech stack
@@ -36,6 +39,7 @@ The API provides task CRUD operations with typed request/response contracts and 
 | Area | Tools |
 |---|---|
 | Language & API | Python, FastAPI, Pydantic |
+| Authentication | JWT (PyJWT), Argon2 (pwdlib) |
 | Data layer | SQLAlchemy 2.0, PostgreSQL, SQLite |
 | Migrations | Alembic |
 | Quality | Pytest, Ruff |
@@ -44,10 +48,11 @@ The API provides task CRUD operations with typed request/response contracts and 
 
 ## Architecture
 
-- `src/routes/`: HTTP endpoints and dependency injection.
-- `src/services.py`: typed persistence operations.
-- `src/models.py`: SQLAlchemy ORM models.
+- `src/routes/`: authentication and task HTTP endpoints.
+- `src/services.py`: user creation and owner-scoped persistence operations.
+- `src/models.py`: SQLAlchemy User and Task models.
 - `src/schemas.py`: Pydantic request/response contracts.
+- `src/security.py`: password hashing and JWT creation/verification.
 - `src/config.py`: validated environment settings.
 - `src/database.py`: engine, session factory and declarative base.
 - `alembic/`: versioned database migrations.
@@ -61,11 +66,22 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
 cp .env.example .env
+```
+
+Before running outside a disposable local environment, replace `AUTH_SECRET_KEY` in `.env` with a unique random secret:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Then apply migrations and start the API:
+
+```bash
 alembic upgrade head
 uvicorn src.main:app --reload
 ```
 
-The default database is SQLite. Set `DATABASE_URL` in `.env` to a PostgreSQL SQLAlchemy URL to use PostgreSQL. Apply new schema changes through Alembic migrations; do not rely on `create_all` in application startup.
+The default database is SQLite. Set `DATABASE_URL` in `.env` to a PostgreSQL SQLAlchemy URL to use PostgreSQL. Apply schema changes through Alembic migrations; do not rely on `create_all` in application startup.
 
 ## Run with Docker Compose
 
@@ -73,7 +89,7 @@ The default database is SQLite. Set `DATABASE_URL` in `.env` to a PostgreSQL SQL
 docker compose up --build
 ```
 
-The API container applies migrations before starting Uvicorn.
+The API container applies migrations before starting Uvicorn. Configure a strong `AUTH_SECRET_KEY` and replace all example database credentials before deployment.
 
 | Service | Address |
 |---|---|
@@ -81,23 +97,58 @@ The API container applies migrations before starting Uvicorn.
 | OpenAPI docs | http://localhost:8000/docs |
 | Health check | http://localhost:8000/health |
 
-The credentials in `docker-compose.yml` are for local development only. Replace them and use a secret manager/environment-specific configuration before any deployment.
+## Authentication flow
+
+1. Register with `POST /api/v1/auth/register`.
+2. Log in with `POST /api/v1/auth/login` and copy the returned access token.
+3. Send the token on protected requests using `Authorization: Bearer <token>`.
+4. Use `GET /api/v1/auth/me` to retrieve the authenticated account.
+
+Example registration:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"dev@example.com","password":"a-long-unique-password"}'
+```
+
+Example login:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"dev@example.com","password":"a-long-unique-password"}'
+```
+
+Use the returned `access_token` for task endpoints:
+
+```bash
+curl http://localhost:8000/api/v1/tasks \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Passwords must contain at least 12 characters. Access-token lifetime is configurable with `ACCESS_TOKEN_EXPIRE_MINUTES` (default: 30 minutes).
 
 ## API endpoints
 
 Base path: `/api/v1`
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| POST | `/tasks` | Create task (201) |
-| GET | `/tasks?page=1&page_size=10&status=pending` | Paginated list and optional status filter |
-| GET | `/tasks/{id}` | Retrieve task |
-| PATCH | `/tasks/{id}` | Partial update |
-| DELETE | `/tasks/{id}` | Delete task (204) |
+| Method | Endpoint | Auth | Purpose |
+|---|---|---|---|
+| POST | `/auth/register` | No | Create an account (201) |
+| POST | `/auth/login` | No | Obtain a bearer token |
+| GET | `/auth/me` | Yes | Get current user |
+| POST | `/tasks` | Yes | Create an owned task (201) |
+| GET | `/tasks?page=1&page_size=10&status=pending` | Yes | List own tasks |
+| GET | `/tasks/{id}` | Yes | Retrieve an owned task |
+| PATCH | `/tasks/{id}` | Yes | Update an owned task |
+| DELETE | `/tasks/{id}` | Yes | Delete an owned task (204) |
 
-Statuses: `pending`, `in_progress`, `completed`, `archived`. Priority ranges from 1 to 5. Titles are trimmed, required and limited to 160 characters. Unknown request fields are rejected instead of silently ignored.
+Task statuses: `pending`, `in_progress`, `completed`, `archived`. Priority ranges from 1 to 5. Titles are trimmed, required and limited to 160 characters. Unknown request fields are rejected. A user cannot list, read, update or delete another user's tasks; inaccessible task IDs return 404.
 
 ## Database migrations
+
+The user/ownership migration preserves pre-existing tasks by assigning them to a disabled legacy account (`legacy-migration@invalid.local`). Those records are not visible to newly registered users. Reassign legacy records explicitly through a controlled administrative/data-migration process if they need to be retained under a real account.
 
 Create a new migration after changing ORM models:
 
@@ -118,23 +169,29 @@ alembic check
 pytest
 ```
 
-Tests use isolated SQLite and do not require PostgreSQL. The migration smoke check uses the configured `DATABASE_URL`; see the Actions tab for the actual result of each run.
+Tests use isolated SQLite and do not require PostgreSQL. The GitHub Actions workflow runs linting, migration upgrade, ORM/migration parity and the test suite. Check the Actions tab for the result of the latest run.
 
-## Security scope
+## Security notes and limitations
 
-This project intentionally remains a single-tenant task API. Authentication was not added because there is no user model or task-ownership boundary yet; adding token validation without per-user data isolation would create a misleading security claim. The separate JWT example demonstrates token handling only.
+This is a portfolio project, not a security-audited production service. Before handling real users or deploying publicly:
 
-Before exposing this API to multiple users, add persisted users, password hashing, JWT verification as a FastAPI dependency, ownership filtering on every task query, rate limiting and deployment secret management.
+- Set a unique high-entropy `AUTH_SECRET_KEY` through a secret manager; never use the development fallback.
+- Serve traffic only over HTTPS and protect database credentials.
+- Add rate limiting and abuse controls to registration and login.
+- Define account recovery, email verification, token revocation/refresh and operational monitoring as required by the product.
+- Review database backup, migration, logging and privacy practices for the deployment environment.
 
-> **Portfolio scope:** This is a learning/portfolio API, not a production-ready multi-user service. Do not expose it publicly with real user data until those controls are implemented and reviewed.
+Never commit production secrets or real user data.
 
 ## Configuration
 
-- `DATABASE_URL`: defaults to `sqlite:///./task_manager.db`.
-- `APP_NAME`: defaults to `Task Manager API`.
-- `API_V1_PREFIX`: defaults to `/api/v1` and must start with `/`.
-
-Never commit production credentials.
+| Variable | Purpose | Default |
+|---|---|---|
+| `DATABASE_URL` | SQLAlchemy database URL | `sqlite:///./task_manager.db` |
+| `APP_NAME` | FastAPI application title | `Task Manager API` |
+| `API_V1_PREFIX` | API route prefix | `/api/v1` |
+| `AUTH_SECRET_KEY` | JWT signing secret | Development-only fallback; replace it |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access-token lifetime | `30` |
 
 ## Related projects
 
