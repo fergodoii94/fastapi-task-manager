@@ -19,8 +19,9 @@ def upgrade() -> None:
         "users",
         sa.Column("is_active", sa.Boolean(), server_default=sa.true(), nullable=False),
     )
+    # Normalize the placeholder address to a syntactically valid reserved example domain.
     op.execute(
-        "UPDATE users SET is_active = FALSE "
+        "UPDATE users SET email = 'legacy-migration@example.com', is_active = FALSE "
         "WHERE email = 'legacy-migration@invalid.local'"
     )
 
