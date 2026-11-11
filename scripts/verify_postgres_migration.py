@@ -43,7 +43,7 @@ def main() -> None:
     with engine.begin() as connection:
         legacy_user = connection.execute(
             text("SELECT id, is_active FROM users WHERE email = :email"),
-            {"email": "legacy-migration@invalid.local"},
+            {"email": "legacy-migration@example.com"},
         ).one()
         legacy_user_id = legacy_user.id
         assert legacy_user.is_active is False, "Legacy migration account must be inactive"
