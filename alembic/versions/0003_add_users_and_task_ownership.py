@@ -1,7 +1,7 @@
 """Add users and task ownership.
 
 Revision ID: 0003_users_task_owner
-Revises: 0002_drop_redundant_task_id_index
+Revises: 0002_drop_task_idx
 Create Date: 2026-11-05
 """
 
