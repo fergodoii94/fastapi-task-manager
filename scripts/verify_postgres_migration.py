@@ -14,7 +14,7 @@ def main() -> None:
 
     # Build the exact pre-ownership schema, then seed a task as an existing
     # installation would have it before revision 0003.
-    command.upgrade(config, "0002_drop_redundant_task_id_index")
+    command.upgrade(config, "0002_drop_task_idx")
 
     engine = create_engine(database_url)
     now = datetime.now(timezone.utc)
