@@ -25,6 +25,16 @@ def upgrade() -> None:
         "WHERE email = 'legacy-migration@invalid.local'"
     )
 
+    # Earlier releases inserted the legacy user with an explicit ID. PostgreSQL
+    # does not advance the SERIAL sequence for explicit IDs, so repair it before
+    # the first real registration can collide with that row.
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute(
+            "SELECT setval("
+            "pg_get_serial_sequence('users', 'id'), "
+            "COALESCE((SELECT MAX(id) FROM users), 1), true)"
+        )
+
 
 def downgrade() -> None:
     with op.batch_alter_table("users") as batch_op:
