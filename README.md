@@ -30,7 +30,7 @@ Users can register, log in and manage their own tasks. The API uses signed JWT b
 - PostgreSQL with Docker Compose; SQLite by default for local development/tests.
 - Pagination and filtering by task status.
 - Input validation for titles, status, priority, partial updates and unknown request fields.
-- GitHub Actions checks Ruff, applies SQLite migrations, checks ORM/migration parity, runs Pytest and verifies the legacy-data migration against PostgreSQL 16.
+- GitHub Actions checks Ruff, applies SQLite migrations, checks ORM/migration parity, runs Pytest and verifies the legacy-data backfill, disabled-account state and PostgreSQL SERIAL-sequence recovery against PostgreSQL 16.
 - Docker image runs as a non-root user.
 - Interactive OpenAPI documentation at `/docs`.
 
@@ -169,7 +169,7 @@ alembic check
 pytest
 ```
 
-The unit/API suite uses isolated SQLite. GitHub Actions additionally starts PostgreSQL 16 and runs `scripts/verify_postgres_migration.py` to exercise the legacy-data backfill and generated user IDs against PostgreSQL. Check the Actions tab for the result of the latest run.
+The unit/API suite uses isolated SQLite. GitHub Actions additionally starts PostgreSQL 16 and runs `scripts/verify_postgres_migration.py` to exercise the legacy-data backfill, disabled legacy account and recovery from a stale PostgreSQL SERIAL sequence. Check the Actions tab for the result of the latest run.
 
 ## Security notes and limitations
 
