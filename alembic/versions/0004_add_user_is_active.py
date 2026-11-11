@@ -37,5 +37,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.execute(
+        "UPDATE users SET email = 'legacy-migration@invalid.local' "
+        "WHERE email = 'legacy-migration@example.com'"
+    )
     with op.batch_alter_table("users") as batch_op:
         batch_op.drop_column("is_active")
