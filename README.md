@@ -57,6 +57,17 @@ Users can register, log in and manage their own tasks. The API uses signed JWT b
 - `src/database.py`: engine, session factory and declarative base.
 - `alembic/`: versioned database migrations.
 
+## Engineering decisions
+
+| Decision | Reason | Trade-off |
+|---|---|---|
+| Scope task queries by the authenticated \`user_id\` | Enforce tenant ownership at the persistence boundary for list, read, update and delete operations. | Every future task endpoint must keep the same ownership filter; isolation tests protect this boundary. |
+| Return 404 for another user's task ID | Avoid revealing whether a record exists outside the caller's account. | A foreign record and a missing record intentionally look the same. |
+| Use Argon2 and signed JWT access tokens | Store password hashes rather than plaintext and keep API authentication stateless. | Access tokens are short-lived; refresh, revocation and account recovery are not implemented yet. |
+| Preserve old tasks under an inactive legacy account | Avoid deleting existing data when introducing task ownership. | Historical tasks need a controlled administrative reassignment before a real user can own them. |
+| Repair PostgreSQL's user-ID sequence in a migration | Earlier versions inserted the legacy user with an explicit ID, which does not advance PostgreSQL's sequence. | The PostgreSQL-specific migration path is verified separately in CI. |
+| Use SQLite for fast local tests and PostgreSQL in CI | Keep the local setup simple while still exercising dialect-specific migration behavior. | SQLite-only tests are not treated as proof that PostgreSQL migrations work. |
+
 ## Run locally
 
 Requires Python 3.11+.
