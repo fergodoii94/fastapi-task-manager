@@ -13,7 +13,6 @@ down_revision = "0002_drop_redundant_task_id_index"
 branch_labels = None
 depends_on = None
 
-LEGACY_USER_EMAIL = "legacy-migration@invalid.local"
 
 
 def upgrade() -> None:
