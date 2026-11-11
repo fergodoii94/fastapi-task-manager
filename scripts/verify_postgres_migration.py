@@ -41,10 +41,12 @@ def main() -> None:
     # Apply revision 0003 on PostgreSQL and verify the legacy backfill.
     command.upgrade(config, "head")
     with engine.begin() as connection:
-        legacy_user_id = connection.execute(
-            text("SELECT id FROM users WHERE email = :email"),
+        legacy_user = connection.execute(
+            text("SELECT id, is_active FROM users WHERE email = :email"),
             {"email": "legacy-migration@invalid.local"},
-        ).scalar_one()
+        ).one()
+        legacy_user_id = legacy_user.id
+        assert legacy_user.is_active is False, "Legacy migration account must be inactive"
         task_owner_id = connection.execute(
             text("SELECT user_id FROM tasks WHERE title = :title"),
             {"title": "Legacy task"},
