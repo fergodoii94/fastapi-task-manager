@@ -148,7 +148,7 @@ Task statuses: `pending`, `in_progress`, `completed`, `archived`. Priority range
 
 ## Database migrations
 
-The user/ownership migration preserves pre-existing tasks by assigning them to `legacy-migration@invalid.local`. A follow-up migration marks that account inactive, so it cannot log in or use a previously issued token. Its tasks remain isolated from newly registered users; reassign them only through a controlled administrative/data-migration process if they need to be retained under a real account.
+The user/ownership migration preserves pre-existing tasks by assigning them to `legacy-migration@example.com`. A follow-up migration marks that account inactive, so it cannot log in or use a previously issued token. Its tasks remain isolated from newly registered users; reassign them only through a controlled administrative/data-migration process if they need to be retained under a real account.
 
 Create a new migration after changing ORM models:
 
