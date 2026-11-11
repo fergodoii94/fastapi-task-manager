@@ -1,6 +1,9 @@
 from src.database import get_db
 from src.main import app
 from src.models import User
+from sqlalchemy.exc import IntegrityError
+
+from src.routes import auth as auth_routes
 from src.security import create_access_token
 
 
@@ -88,3 +91,16 @@ def test_inactive_legacy_account_cannot_login_or_use_an_existing_token(client):
     token, _ = create_access_token(legacy_user_id)
     client.headers["Authorization"] = f"Bearer {token}"
     assert client.get("/api/v1/auth/me").status_code == 401
+
+
+def test_concurrent_duplicate_registration_returns_conflict(client, monkeypatch):
+    def simulate_competing_insert(db, payload):
+        db.add(User(email=payload.email, password_hash="concurrent-insert-test"))
+        db.commit()
+        raise IntegrityError("INSERT", {}, RuntimeError("simulated unique violation"))
+
+    monkeypatch.setattr(auth_routes.services, "create_user", simulate_competing_insert)
+    response = register(client, "race-condition@example.com")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Email is already registered"
