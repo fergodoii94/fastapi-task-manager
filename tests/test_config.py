@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from src.config import Settings
+from src.config import DEVELOPMENT_AUTH_SECRET, Settings
 
 
 def test_settings_defaults_are_local_and_reproducible():
@@ -29,7 +29,11 @@ def test_settings_reject_invalid_values(values):
 
 def test_production_rejects_the_development_secret():
     with pytest.raises(ValidationError, match="unique AUTH_SECRET_KEY"):
-        Settings(_env_file=None, app_env="production")
+        Settings(
+            _env_file=None,
+            app_env="production",
+            auth_secret_key=DEVELOPMENT_AUTH_SECRET,
+        )
 
 
 def test_production_accepts_a_custom_secret():
