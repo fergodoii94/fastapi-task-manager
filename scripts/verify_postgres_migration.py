@@ -38,7 +38,19 @@ def main() -> None:
             },
         )
 
-    # Apply revision 0003 on PostgreSQL and verify the legacy backfill.
+    # Apply the ownership migration, then simulate the stale SERIAL sequence
+    # left by the earlier release that inserted the legacy user with id=1.
+    command.upgrade(config, "0003_users_task_owner")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "SELECT setval("
+                "pg_get_serial_sequence('users', 'id'), "
+                "COALESCE((SELECT MAX(id) FROM users), 1), false)"
+            )
+        )
+
+    # The next migration must repair the sequence and disable the legacy user.
     command.upgrade(config, "head")
     with engine.begin() as connection:
         legacy_user = connection.execute(
