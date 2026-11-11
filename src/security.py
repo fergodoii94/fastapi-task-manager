@@ -32,7 +32,12 @@ def create_access_token(user_id: int) -> tuple[str, int]:
 
 def decode_access_token(token: str) -> int:
     settings = get_settings()
-    payload = jwt.decode(token, settings.auth_secret_key, algorithms=[ALGORITHM])
+    payload = jwt.decode(
+        token,
+        settings.auth_secret_key,
+        algorithms=[ALGORITHM],
+        options={"require": ["exp", "iat", "sub"]},
+    )
     subject = payload.get("sub")
     if not isinstance(subject, str) or not subject.isdigit():
         raise jwt.InvalidTokenError("Invalid token subject")

@@ -1,7 +1,7 @@
 """Add users and task ownership.
 
 Revision ID: 0003_users_task_owner
-Revises: 0002_drop_redundant_task_id_index
+Revises: 0002_drop_task_idx
 Create Date: 2026-11-05
 """
 
@@ -9,9 +9,10 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "0003_users_task_owner"
-down_revision = "0002_drop_redundant_task_id_index"
+down_revision = "0002_drop_task_idx"
 branch_labels = None
 depends_on = None
+
 
 
 def upgrade() -> None:
@@ -24,16 +25,27 @@ def upgrade() -> None:
     )
     op.create_index("ix_users_email", "users", ["email"], unique=True)
 
-    # Preserve pre-existing tasks under a disabled legacy account. Its
-    # unguessable placeholder hash means it cannot authenticate.
+    # Let the database generate the primary key. In PostgreSQL, inserting an
+    # explicit ID does not advance the SERIAL/identity sequence, which could
+    # make the first subsequently registered user collide with this row.
     op.execute(
-        "INSERT INTO users (id, email, password_hash, created_at) "
-        "VALUES (1, 'legacy-migration@invalid.local', "
+        "INSERT INTO users (email, password_hash, created_at) "
+        "VALUES ('legacy-migration@invalid.local', "
         "'!account-disabled-by-migration!', CURRENT_TIMESTAMP)"
     )
+
+    # Add the ownership column as nullable, backfill every existing task with
+    # the generated legacy user ID, and only then enforce NOT NULL.
     with op.batch_alter_table("tasks") as batch_op:
         batch_op.add_column(sa.Column("user_id", sa.Integer(), nullable=True))
-    op.execute("UPDATE tasks SET user_id = 1 WHERE user_id IS NULL")
+
+    op.execute(
+        "UPDATE tasks "
+        "SET user_id = (SELECT id FROM users "
+        "WHERE email = 'legacy-migration@invalid.local') "
+        "WHERE user_id IS NULL"
+    )
+
     with op.batch_alter_table("tasks") as batch_op:
         batch_op.alter_column("user_id", existing_type=sa.Integer(), nullable=False)
         batch_op.create_foreign_key(

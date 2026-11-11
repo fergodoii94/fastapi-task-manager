@@ -1,3 +1,12 @@
+from src.database import get_db
+from src.main import app
+from src.models import User
+from sqlalchemy.exc import IntegrityError
+
+from src.routes import auth as auth_routes
+from src.security import create_access_token
+
+
 def register(client, email, password="correct-horse-battery"):
     return client.post("/api/v1/auth/register", json={"email": email, "password": password})
 
@@ -48,3 +57,50 @@ def test_tasks_require_authentication(client):
     client.headers.pop("Authorization")
     assert client.get("/api/v1/tasks").status_code == 401
     assert client.post("/api/v1/tasks", json={"title": "No token"}).status_code == 401
+
+
+def test_invalid_bearer_token_is_rejected(client):
+    client.headers["Authorization"] = "Bearer not-a-valid-token"
+    assert client.get("/api/v1/auth/me").status_code == 401
+
+
+def test_inactive_legacy_account_cannot_login_or_use_an_existing_token(client):
+    db_generator = app.dependency_overrides[get_db]()
+    db = next(db_generator)
+    try:
+        legacy_user = User(
+            email="legacy-migration@example.com",
+            password_hash="!account-disabled-by-migration!",
+            is_active=False,
+        )
+        db.add(legacy_user)
+        db.commit()
+        legacy_user_id = legacy_user.id
+    finally:
+        db_generator.close()
+
+    login = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "legacy-migration@example.com",
+            "password": "any-password-at-all",
+        },
+    )
+    assert login.status_code == 401
+
+    token, _ = create_access_token(legacy_user_id)
+    client.headers["Authorization"] = f"Bearer {token}"
+    assert client.get("/api/v1/auth/me").status_code == 401
+
+
+def test_concurrent_duplicate_registration_returns_conflict(client, monkeypatch):
+    def simulate_competing_insert(db, payload):
+        db.add(User(email=payload.email, password_hash="concurrent-insert-test"))
+        db.commit()
+        raise IntegrityError("INSERT", {}, RuntimeError("simulated unique violation"))
+
+    monkeypatch.setattr(auth_routes.services, "create_user", simulate_competing_insert)
+    response = register(client, "race-condition@example.com")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Email is already registered"

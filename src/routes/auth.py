@@ -2,6 +2,7 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from src import services
@@ -19,13 +20,25 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     existing = db.scalar(select(User).where(User.email == payload.email))
     if existing:
         raise HTTPException(status_code=409, detail="Email is already registered")
-    return services.create_user(db, payload)
+    try:
+        return services.create_user(db, payload)
+    except IntegrityError:
+        # A concurrent registration may win after the pre-check but before INSERT.
+        db.rollback()
+        existing = db.scalar(select(User).where(User.email == payload.email))
+        if existing:
+            raise HTTPException(
+                status_code=409, detail="Email is already registered"
+            ) from None
+        raise
 
 
 @router.post("/login", response_model=TokenRead)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == payload.email.strip().lower()))
-    if user is None or not verify_password(payload.password, user.password_hash):
+    if user is None or not user.is_active or not verify_password(
+        payload.password, user.password_hash
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -51,7 +64,7 @@ def get_current_user(
     except (jwt.InvalidTokenError, ValueError, TypeError):
         raise unauthorized from None
     user = db.get(User, user_id)
-    if user is None:
+    if user is None or not user.is_active:
         raise unauthorized
     return user
 

@@ -12,6 +12,20 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: task_manager_test
+          POSTGRES_USER: task_manager
+          POSTGRES_PASSWORD: task_manager_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U task_manager -d task_manager_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       AUTH_SECRET_KEY: ci-only-secret-key-do-not-use-outside-tests-123456
     steps:
@@ -23,14 +37,18 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements-dev.txt
       - name: Lint
-        run: ruff check src tests alembic
-      - name: Apply database migrations
+        run: ruff check src tests alembic scripts
+      - name: Apply SQLite migrations
         env:
           DATABASE_URL: sqlite:///./task_manager.db
         run: alembic upgrade head
-      - name: Check ORM and migration parity
+      - name: Check SQLite ORM and migration parity
         env:
           DATABASE_URL: sqlite:///./task_manager.db
         run: alembic check
       - name: Test
         run: pytest
+      - name: Verify legacy ownership migration and generated IDs on PostgreSQL
+        env:
+          DATABASE_URL: postgresql+psycopg://task_manager:task_manager_test_password@localhost:5432/task_manager_test
+        run: python scripts/verify_postgres_migration.py
