@@ -35,8 +35,11 @@ def upgrade() -> None:
         "'!account-disabled-by-migration!', CURRENT_TIMESTAMP)"
     )
 
-    # Resolve the generated legacy ID by its unique marker instead of assuming
-    # that it is 1. This keeps existing tasks attached to the disabled account.
+    # Add the ownership column as nullable, backfill every existing task with
+    # the generated legacy user ID, and only then enforce NOT NULL.
+    with op.batch_alter_table("tasks") as batch_op:
+        batch_op.add_column(sa.Column("user_id", sa.Integer(), nullable=True))
+
     op.execute(
         "UPDATE tasks "
         "SET user_id = (SELECT id FROM users "
@@ -44,14 +47,6 @@ def upgrade() -> None:
         "WHERE user_id IS NULL"
     )
 
-    with op.batch_alter_table("tasks") as batch_op:
-        batch_op.add_column(sa.Column("user_id", sa.Integer(), nullable=True))
-    op.execute(
-        "UPDATE tasks "
-        "SET user_id = (SELECT id FROM users "
-        "WHERE email = 'legacy-migration@invalid.local') "
-        "WHERE user_id IS NULL"
-    )
     with op.batch_alter_table("tasks") as batch_op:
         batch_op.alter_column("user_id", existing_type=sa.Integer(), nullable=False)
         batch_op.create_foreign_key(
