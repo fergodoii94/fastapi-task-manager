@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "0003_users_task_owner"
-down_revision = "0002_drop_redundant_task_id_index"
+down_revision = "0002_drop_task_idx"
 branch_labels = None
 depends_on = None
 
