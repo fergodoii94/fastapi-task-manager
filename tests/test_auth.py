@@ -66,7 +66,7 @@ def test_inactive_legacy_account_cannot_login_or_use_an_existing_token(client):
     db = next(db_generator)
     try:
         legacy_user = User(
-            email="legacy-migration@invalid.local",
+            email="legacy-migration@example.com",
             password_hash="!account-disabled-by-migration!",
             is_active=False,
         )
@@ -79,7 +79,7 @@ def test_inactive_legacy_account_cannot_login_or_use_an_existing_token(client):
     login = client.post(
         "/api/v1/auth/login",
         json={
-            "email": "legacy-migration@invalid.local",
+            "email": "legacy-migration@example.com",
             "password": "any-password-at-all",
         },
     )
