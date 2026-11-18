@@ -1,13 +1,13 @@
 """Drop the redundant index on the tasks primary key.
 
-Revision ID: 0002_drop_redundant_task_id_index
+Revision ID: 0002_drop_task_idx
 Revises: 0001_create_tasks
 Create Date: 2026-11-04
 """
 
 from alembic import op
 
-revision = "0002_drop_redundant_task_id_index"
+revision = "0002_drop_task_idx"
 down_revision = "0001_create_tasks"
 branch_labels = None
 depends_on = None
