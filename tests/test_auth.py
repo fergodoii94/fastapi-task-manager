@@ -104,3 +104,20 @@ def test_concurrent_duplicate_registration_returns_conflict(client, monkeypatch)
 
     assert response.status_code == 409
     assert response.json()["detail"] == "Email is already registered"
+
+
+def test_registration_rejects_email_longer_than_database_column(client):
+    email = f"{'a' * 245}@example.com"
+    response = register(client, email)
+    assert response.status_code == 422
+
+
+def test_login_rejects_password_longer_than_registration_limit(client):
+    response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "owner@example.com",
+            "password": "x" * 129,
+        },
+    )
+    assert response.status_code == 422
