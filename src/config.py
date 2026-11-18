@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEVELOPMENT_AUTH_SECRET = (
@@ -23,9 +23,14 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    @field_validator("auth_secret_key")
+    @classmethod
+    def normalize_auth_secret(cls, value: str) -> str:
+        return value.strip()
+
     @model_validator(mode="after")
     def validate_security_settings(self) -> "Settings":
-        if not self.auth_secret_key.strip():
+        if not self.auth_secret_key:
             raise ValueError("AUTH_SECRET_KEY must not be blank")
         if (
             self.app_env == "production"
