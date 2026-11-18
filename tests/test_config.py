@@ -48,3 +48,13 @@ def test_production_accepts_a_custom_secret():
 def test_settings_reject_blank_auth_secret():
     with pytest.raises(ValidationError):
         Settings(_env_file=None, auth_secret_key=" " * 40)
+
+
+
+def test_production_rejects_padded_development_secret():
+    with pytest.raises(ValidationError, match="unique AUTH_SECRET_KEY"):
+        Settings(
+            _env_file=None,
+            app_env="production",
+            auth_secret_key=f" {DEVELOPMENT_AUTH_SECRET} ",
+        )
