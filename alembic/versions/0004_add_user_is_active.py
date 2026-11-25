@@ -1,4 +1,4 @@
-"""Add an explicit active flag for user accounts.
+""""Add an explicit active flag for user accounts.
 
 Revision ID: 0004_user_is_active
 Revises: 0003_users_task_owner
@@ -13,33 +13,50 @@ down_revision = "0003_users_task_owner"
 branch_labels = None
 depends_on = None
 
+LEGACY_PASSWORD_SENTINEL = "!account-disabled-by-migration!"
+
 
 def upgrade() -> None:
     op.add_column(
         "users",
         sa.Column("is_active", sa.Boolean(), server_default=sa.true(), nullable=False),
     )
-    # Normalize the placeholder address to a syntactically valid reserved example domain.
+
+    # Identify only the account created by revision 0003. Do not rename its
+    # email: a real user may already own any syntactically valid candidate.
     op.execute(
-        "UPDATE users SET email = 'legacy-migration@example.com', is_active = FALSE "
-        "WHERE email = 'legacy-migration@invalid.local'"
+        sa.text("UPDATE users SET is_active = FALSE WHERE password_hash = :sentinel").bindparams(
+            sentinel=LEGACY_PASSWORD_SENTINEL
+        )
     )
 
-    # Earlier releases inserted the legacy user with an explicit ID. PostgreSQL
-    # does not advance the SERIAL sequence for explicit IDs, so repair it before
-    # the first real registration can collide with that row.
+    # Revision 0003 was already published with an explicit legacy user ID.
+    # Advance a stale PostgreSQL sequence to MAX(id), but never move a sequence
+    # backwards if operators have already allocated IDs beyond the current rows.
     if op.get_bind().dialect.name == "postgresql":
         op.execute(
-            "SELECT setval("
-            "pg_get_serial_sequence('users', 'id'), "
-            "COALESCE((SELECT MAX(id) FROM users), 1), true)"
+            """
+            DO $$
+            DECLARE
+                user_id_sequence regclass;
+                sequence_value bigint;
+                max_user_id bigint;
+            BEGIN
+                user_id_sequence := pg_get_serial_sequence('users', 'id')::regclass;
+                sequence_value := pg_sequence_last_value(user_id_sequence);
+                SELECT COALESCE(MAX(id), 1) INTO max_user_id FROM users;
+
+                PERFORM setval(
+                    user_id_sequence,
+                    GREATEST(COALESCE(sequence_value, 1), max_user_id),
+                    TRUE
+                );
+            END
+            $$;
+            """
         )
 
 
 def downgrade() -> None:
-    op.execute(
-        "UPDATE users SET email = 'legacy-migration@invalid.local' "
-        "WHERE email = 'legacy-migration@example.com'"
-    )
     with op.batch_alter_table("users") as batch_op:
         batch_op.drop_column("is_active")
