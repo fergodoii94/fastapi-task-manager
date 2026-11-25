@@ -65,7 +65,7 @@ Users can register, log in and manage their own tasks. The API uses signed JWT b
 | Return 404 for another user's task ID | Avoid revealing whether a record exists outside the caller's account. | A foreign record and a missing record intentionally look the same. |
 | Use Argon2 and signed JWT access tokens | Store password hashes rather than plaintext and keep API authentication stateless. | Access tokens are short-lived; refresh, revocation and account recovery are not implemented yet. |
 | Preserve old tasks under an inactive legacy account | Avoid deleting existing data when introducing task ownership. | Historical tasks need a controlled administrative reassignment before a real user can own them. |
-| Repair PostgreSQL's user-ID sequence in a migration | Earlier versions inserted the legacy user with an explicit ID, which does not advance PostgreSQL's sequence. | The PostgreSQL-specific migration path is verified separately in CI. |
+| Repair PostgreSQL's user-ID sequence monotonically | The published ownership migration inserted the legacy user with an explicit ID, which does not advance PostgreSQL's sequence. | The follow-up migration advances a stale sequence to the table maximum but never rewinds an already-ahead sequence; both cases are exercised in PostgreSQL CI. |
 | Use SQLite for fast local tests and PostgreSQL in CI | Keep the local setup simple while still exercising dialect-specific migration behavior. | SQLite-only tests are not treated as proof that PostgreSQL migrations work. |
 
 ## Run locally
@@ -159,7 +159,7 @@ Task statuses: `pending`, `in_progress`, `completed`, `archived`. Priority range
 
 ## Database migrations
 
-The user/ownership migration preserves pre-existing tasks by assigning them to `legacy-migration@example.com`. A follow-up migration marks that account inactive, so it cannot log in or use a previously issued token. Its tasks remain isolated from newly registered users; reassign them only through a controlled administrative/data-migration process if they need to be retained under a real account.
+The user/ownership migration preserves pre-existing tasks by assigning them to an internal placeholder account. A follow-up migration marks that account inactive; authentication rejects both new logins and previously issued tokens for inactive accounts. The migration keeps the original published Alembic revision identifiers stable and does not rename the placeholder email, avoiding collisions with legitimate accounts. Historical tasks remain isolated from newly registered users; reassign them only through a controlled administrative/data-migration process if needed.
 
 Create a new migration after changing ORM models:
 
@@ -180,7 +180,7 @@ alembic check
 pytest
 ```
 
-The unit/API suite uses isolated SQLite. GitHub Actions additionally starts PostgreSQL 16 and runs `scripts/verify_postgres_migration.py` to exercise the legacy-data backfill, disabled legacy account and recovery from a stale PostgreSQL SERIAL sequence. Check the Actions tab for the result of the latest run.
+The unit/API suite uses isolated SQLite. GitHub Actions additionally starts PostgreSQL 16 and runs `scripts/verify_postgres_migration.py` against a disposable database named `task_manager_test`. The script resets that database's `public` schema and checks migration from the published revision ID, preservation of a colliding legitimate email, disabled legacy ownership, recovery from a stale SERIAL sequence and preservation of a sequence already ahead of the table. Never point this script at a database containing data you need to keep.
 
 ## Security notes and limitations
 
