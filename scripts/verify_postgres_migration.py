@@ -30,10 +30,18 @@ def reset_schema(engine) -> None:
 
 def create_pre_ownership_database(config: Config, engine) -> datetime:
     reset_schema(engine)
-    command.upgrade(config, BASE_REVISION)
-
+    # Create the pre-ownership schema first. Then shrink the version column to
+    # the width used by older Alembic installations so env.py must widen it
+    # before the published long revision ID is written.
+    command.upgrade(config, "0001_create_tasks")
     now = datetime.now(timezone.utc)
     with engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE alembic_version "
+                "ALTER COLUMN version_num TYPE VARCHAR(32)"
+            )
+        )
         connection.execute(
             text(
                 """
@@ -52,6 +60,10 @@ def create_pre_ownership_database(config: Config, engine) -> datetime:
                 "updated_at": now,
             },
         )
+
+    # The next upgrade must widen the existing VARCHAR(32) version column and
+    # retain the published revision identifier for already-stamped databases.
+    command.upgrade(config, BASE_REVISION)
 
     # Apply the exact, already-published ownership revision. It inserts the
     # legacy account with ID 1 without advancing PostgreSQL's SERIAL sequence.
