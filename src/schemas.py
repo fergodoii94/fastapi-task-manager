@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, mo
 class UserCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: EmailStr
+    email: EmailStr = Field(max_length=254)
     password: str = Field(min_length=12, max_length=128)
 
     @field_validator("email")
@@ -35,8 +35,8 @@ class TokenRead(BaseModel):
 class LoginRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: EmailStr
-    password: str
+    email: EmailStr = Field(max_length=254)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class TaskStatus(str, Enum):
