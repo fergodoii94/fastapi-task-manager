@@ -159,7 +159,7 @@ Task statuses: `pending`, `in_progress`, `completed`, `archived`. Priority range
 
 ## Database migrations
 
-The user/ownership migration preserves pre-existing tasks by assigning them to an internal placeholder account. A follow-up migration marks that account inactive; authentication rejects both new logins and previously issued tokens for inactive accounts. The migration keeps the original published Alembic revision identifiers stable, expands older PostgreSQL `alembic_version.version_num` columns before writing the long revision ID, and does not rename the placeholder email, avoiding collisions with legitimate accounts. Historical tasks remain isolated from newly registered users; reassign them only through a controlled administrative/data-migration process if needed.
+The user/ownership migration preserves pre-existing tasks by assigning them to an internal placeholder account. A follow-up migration marks that account inactive; authentication rejects both new logins and previously issued tokens for inactive accounts. The migration keeps the original published Alembic revision identifiers stable and does not rename the placeholder email, avoiding collisions with legitimate accounts. Historical tasks remain isolated from newly registered users; reassign them only through a controlled administrative/data-migration process if needed.
 
 Create a new migration after changing ORM models:
 
@@ -180,7 +180,7 @@ alembic check
 pytest
 ```
 
-The unit/API suite uses isolated SQLite. GitHub Actions additionally starts PostgreSQL 16 and runs `scripts/verify_postgres_migration.py` against a disposable database named `task_manager_test`. The script resets that database's `public` schema, simulates the older `VARCHAR(32)` Alembic version table, and checks migration from the published revision ID, preservation of a colliding legitimate email, disabled legacy ownership, recovery from a stale SERIAL sequence and preservation of a sequence already ahead of the table. Never point this script at a database containing data you need to keep.
+The unit/API suite uses isolated SQLite. GitHub Actions additionally starts PostgreSQL 16 and runs `scripts/verify_postgres_migration.py` against a disposable database named `task_manager_test`. The script resets that database's `public` schema and checks migration from the published revision ID, preservation of a colliding legitimate email, disabled legacy ownership, recovery from a stale SERIAL sequence and preservation of a sequence already ahead of the table. Never point this script at a database containing data you need to keep.
 
 ## Security notes and limitations
 
