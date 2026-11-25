@@ -1,4 +1,4 @@
-""""Add users and task ownership.
+"""Add users and task ownership.
 
 Revision ID: 0003_users_task_owner
 Revises: 0002_drop_redundant_task_id_index
