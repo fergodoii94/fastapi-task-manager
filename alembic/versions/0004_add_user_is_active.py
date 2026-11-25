@@ -1,4 +1,4 @@
-""""Add an explicit active flag for user accounts.
+"""Add an explicit active flag for user accounts.
 
 Revision ID: 0004_user_is_active
 Revises: 0003_users_task_owner
@@ -25,9 +25,9 @@ def upgrade() -> None:
     # Identify only the account created by revision 0003. Do not rename its
     # email: a real user may already own any syntactically valid candidate.
     op.execute(
-        sa.text("UPDATE users SET is_active = FALSE WHERE password_hash = :sentinel").bindparams(
-            sentinel=LEGACY_PASSWORD_SENTINEL
-        )
+        sa.text(
+            "UPDATE users SET is_active = FALSE WHERE password_hash = :sentinel"
+        ).bindparams(sentinel=LEGACY_PASSWORD_SENTINEL)
     )
 
     # Revision 0003 was already published with an explicit legacy user ID.
