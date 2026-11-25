@@ -69,6 +69,9 @@ def run_migrations_online() -> None:
     )
     with connectable.connect() as connection:
         ensure_version_table_capacity(connection)
+        # Commit the bootstrap/column-width adjustment before Alembic starts
+        # its own migration transaction on this connection.
+        connection.commit()
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
