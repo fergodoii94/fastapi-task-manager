@@ -1,4 +1,4 @@
-""""Verify ownership migration compatibility and PostgreSQL sequence recovery.
+"""Verify ownership migration compatibility and PostgreSQL sequence recovery.
 
 This script destructively resets the public schema. It refuses to run unless
 DATABASE_URL points to the explicitly named disposable test database.
@@ -141,7 +141,7 @@ def verify_sequence_is_never_rewound(config: Config, engine) -> None:
     with engine.begin() as connection:
         next_user_id = insert_user(connection, "ahead-sequence-check@example.com", now)
         assert next_user_id == 51, (
-            f"Expected sequence value 51 to be preserved, got {next_user_id}"
+            f"Expected sequence value 50 to be preserved, got {next_user_id}"
         )
 
     print("PostgreSQL sequence-ahead scenario passed: migration did not rewind the sequence.")
