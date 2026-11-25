@@ -1,4 +1,4 @@
-""""Drop the redundant index on the tasks primary key.
+"""Drop the redundant index on the tasks primary key.
 
 Revision ID: 0002_drop_redundant_task_id_index
 Revises: 0001_create_tasks
