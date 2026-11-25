@@ -11,7 +11,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, text
 
-BASE_REVISION = "0002_drop_redundant_task_id_index"
+BASE_REVISION = "0002_drop_task_idx"
 LEGACY_SENTINEL = "!account-disabled-by-migration!"
 EXPECTED_DATABASE = os.getenv("POSTGRES_TEST_DATABASE_NAME", "task_manager_test")
 
@@ -30,18 +30,11 @@ def reset_schema(engine) -> None:
 
 def create_pre_ownership_database(config: Config, engine) -> datetime:
     reset_schema(engine)
-    # Create the pre-ownership schema first. Then shrink the version column to
-    # the width used by older Alembic installations so env.py must widen it
-    # before the published long revision ID is written.
+    # Recreate the schema immediately before ownership was added. The
+    # published revision ID must remain resolvable for already-stamped databases.
     command.upgrade(config, "0001_create_tasks")
     now = datetime.now(timezone.utc)
     with engine.begin() as connection:
-        connection.execute(
-            text(
-                "ALTER TABLE alembic_version "
-                "ALTER COLUMN version_num TYPE VARCHAR(32)"
-            )
-        )
         connection.execute(
             text(
                 """
@@ -61,8 +54,7 @@ def create_pre_ownership_database(config: Config, engine) -> datetime:
             },
         )
 
-    # The next upgrade must widen the existing VARCHAR(32) version column and
-    # retain the published revision identifier for already-stamped databases.
+    # Apply the original published revision identifier before ownership migration.
     command.upgrade(config, BASE_REVISION)
 
     # Apply the exact, already-published ownership revision. It inserts the
